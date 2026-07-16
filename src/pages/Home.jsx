@@ -1,115 +1,181 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProductsStart, fetchProductsSuccess, fetchProductsFailure } from '../redux/slices/productSlice';
+import { fetchProducts } from '../redux/thunks/productThunks';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
 import Loader from '../components/Loader';
 import toast from 'react-hot-toast';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 const Home = () => {
   const dispatch = useDispatch();
-  const { products, loading } = useSelector((state) => state.products);
+  const { products, loading, totalPages } = useSelector((state) => state.products);
   
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState('');
   const [categories, setCategories] = useState([]);
+  const [page, setPage] = useState(1);
 
-  const fetchProducts = async () => {
-    dispatch(fetchProductsStart());
+  const fetchProductsList = async (pageNum = page) => {
+    const params = { page: pageNum, limit: 8 };
+    if (search.trim()) params.search = search;
+    if (category) params.category = category;
+    if (sort) params.sort = sort;
+
     try {
-      const params = {};
-      if (search.trim()) params.search = search;
-      if (category) params.category = category;
-      if (sort) params.sort = sort;
-
-      const response = await api.get('/products', { params });
-      const data = response.data.data;
-      const productsList = Array.isArray(data) ? data : (data.products || []);
-      
-      dispatch(fetchProductsSuccess(productsList));
-
-      if (categories.length === 0 && productsList.length > 0) {
-        const uniqueCategories = [...new Set(productsList.map(p => p.category))];
-        setCategories(uniqueCategories);
+      const resultAction = await dispatch(fetchProducts(params));
+      if (fetchProducts.rejected.match(resultAction)) {
+        toast.error(resultAction.payload || 'Failed to fetch products');
       }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to fetch products';
-      dispatch(fetchProductsFailure(message));
-      toast.error(message);
+      toast.error('Failed to fetch products');
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    const loadCategories = async () => {
+      try {
+        const res = await api.get('/categories');
+        setCategories(res.data.data);
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  useEffect(() => {
+    fetchProductsList(1);
+    setPage(1);
   }, [category, sort]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchProducts();
+    fetchProductsList(1);
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setPage(newPage);
+      fetchProductsList(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="home-page">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 space-y-4 md:space-y-0">
-        <h1 className="text-3xl font-bold text-gray-800">All Products</h1>
+    <div className="space-y-6" id="home-page">
+      {/* Page Header Area */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-5 border-b border-gray-200">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            Product Catalog
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Discover and order top quality products.
+          </p>
+        </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 w-full md:w-auto">
-          <form onSubmit={handleSearchSubmit} className="flex w-full sm:w-64">
-            <input
+        {/* Controls */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          <form onSubmit={handleSearchSubmit} className="flex w-full sm:w-80">
+            <Input
               type="text"
               placeholder="Search products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-l focus:outline-none focus:border-blue-500 bg-white"
+              className="rounded-r-none border-r-0"
             />
-            <button
+            <Button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r font-medium cursor-pointer"
+              size="sm"
+              className="rounded-l-none whitespace-nowrap px-4 py-2.5 h-11"
             >
               Search
-            </button>
+            </Button>
           </form>
 
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-          >
-            <option value="">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+          {/* Category Filter */}
+          <div className="w-full sm:w-auto">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-300 focus:outline-none shadow-theme-xs cursor-pointer"
+            >
+              <option value="">All Categories</option>
+              {categories.map((cat) => {
+                const catName = typeof cat === 'string' ? cat : cat.name;
+                const catId = typeof cat === 'string' ? cat : cat._id;
+                return (
+                  <option key={catId} value={catName}>
+                    {catName}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
-          <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 bg-white"
-          >
-            <option value="">Sort By</option>
-            <option value="price">Price: Low to High</option>
-            <option value="-price">Price: High to Low</option>
-            <option value="-rating">Highest Rated</option>
-            <option value="-createdAt">Newest Arrivals</option>
-          </select>
+          {/* Sorting */}
+          <div className="w-full sm:w-auto">
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="h-11 w-full sm:w-48 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-300 focus:outline-none shadow-theme-xs cursor-pointer"
+            >
+              <option value="">Sort By</option>
+              <option value="price">Price: Low to High</option>
+              <option value="-price">Price: High to Low</option>
+              <option value="-rating">Highest Rated</option>
+              <option value="-createdAt">Newest Arrivals</option>
+            </select>
+          </div>
         </div>
       </div>
 
+      {/* Content Area */}
       {loading ? (
         <Loader />
       ) : products.length === 0 ? (
-        <div className="text-center py-20">
-          <p className="text-gray-500 text-lg">No products found matching your criteria.</p>
+        <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center shadow-theme-xs">
+          <p className="text-gray-500 text-lg font-medium">No products found matching your criteria.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product._id || product.id} product={product} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <ProductCard key={product._id || product.id} product={product} />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-3 mt-8 pt-4 border-t border-gray-100">
+              <Button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1}
+                variant="outline"
+                size="sm"
+                className="px-4 py-2"
+              >
+                Previous
+              </Button>
+              <span className="text-sm font-semibold text-gray-700">
+                Page {page} of {totalPages}
+              </span>
+              <Button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages}
+                variant="outline"
+                size="sm"
+                className="px-4 py-2"
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { loginStart, loginSuccess, loginFailure } from '../redux/slices/authSlice';
-import api from '../api/axios';
+import { loginUser } from '../redux/thunks/authThunks';
 import toast from 'react-hot-toast';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import AuthLayout from '../components/AuthLayout';
+import Label from '../components/ui/Label';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
+import { EyeIcon, EyeCloseIcon } from '../icons';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,75 +23,99 @@ const Login = () => {
       return toast.error('Please enter email and password');
     }
 
-    dispatch(loginStart());
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return toast.error('Please enter a valid email address');
+    }
+
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const data = response.data.data;
-      
-      dispatch(loginSuccess({ user: data.user, token: data.token }));
-      toast.success('Logged in successfully!');
-      navigate('/');
-    } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      dispatch(loginFailure(message));
-      toast.error(message);
+      const resultAction = await dispatch(loginUser({ email, password }));
+      if (loginUser.fulfilled.match(resultAction)) {
+        toast.success('Logged in successfully!');
+        navigate('/');
+      } else {
+        const errorMsg = resultAction.payload || 'Login failed';
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      toast.error('An error occurred during login');
     }
   };
 
   return (
-    <div className="max-w-md mx-auto my-12 p-6 bg-white rounded-lg shadow-md border border-gray-200" id="login-page">
-      <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Login to E-SHOP</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Email Address</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
-            placeholder="you@example.com"
-            required
-          />
+    <AuthLayout>
+      <div className="w-full max-w-md mx-auto">
+        <div className="mb-5 sm:mb-8 text-center lg:text-left">
+          <h1 className="mb-2 font-semibold text-gray-800 text-title-sm sm:text-title-md">
+            Sign In
+          </h1>
+          <p className="text-sm text-gray-500">
+            Enter your email and password to sign in!
+          </p>
         </div>
-        
-        <div>
-          <label className="block text-gray-700 font-medium mb-1">Password</label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500 pr-10 bg-white"
-              placeholder="••••••••"
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <Label htmlFor="email">
+              Email Address <span className="text-error-500">*</span>
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="info@gmail.com"
               required
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none cursor-pointer"
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
           </div>
+          
+          <div>
+            <Label htmlFor="password">
+              Password <span className="text-error-500">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                required
+                className="pr-12"
+              />
+              <span
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+              >
+                {showPassword ? (
+                  <EyeIcon className="fill-gray-500 size-5" />
+                ) : (
+                  <EyeCloseIcon className="fill-gray-500 size-5" />
+                )}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+              size="sm"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </div>
+        </form>
+
+        <div className="mt-6 text-center text-sm text-gray-700">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="text-brand-500 hover:text-brand-600 font-medium hover:underline">
+            Sign Up
+          </Link>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded transition-colors disabled:bg-gray-400 cursor-pointer"
-        >
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-
-      <div className="mt-6 text-center text-sm text-gray-600">
-        Don't have an account?{' '}
-        <Link to="/register" className="text-blue-600 hover:underline">
-          Register here
-        </Link>
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

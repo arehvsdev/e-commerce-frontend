@@ -1,13 +1,21 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { fetchOrdersStart, fetchOrdersSuccess, fetchOrdersFailure } from '../redux/slices/orderSlice';
 import api from '../api/axios';
 import Loader from '../components/Loader';
 import toast from 'react-hot-toast';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
+import { Modal } from '../components/ui/Modal';
 
 const Orders = () => {
   const dispatch = useDispatch();
   const { orders, loading } = useSelector((state) => state.orders);
+  
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchOrders = async () => {
     dispatch(fetchOrdersStart());
@@ -26,77 +34,207 @@ const Orders = () => {
     fetchOrders();
   }, []);
 
+  const openOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setIsModalOpen(true);
+  };
+
+  const closeOrderDetails = () => {
+    setSelectedOrder(null);
+    setIsModalOpen(false);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'delivered':
+        return 'success';
+      case 'shipped':
+        return 'info';
+      case 'pending':
+      default:
+        return 'warning';
+    }
+  };
+
   if (loading) return <Loader />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" id="orders-page">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">Your Order History</h1>
+    <div className="space-y-6" id="orders-page">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+          Order History
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Track and review your past purchases.
+        </p>
+      </div>
 
       {orders.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-gray-200 rounded-lg shadow">
-          <p className="text-gray-500 text-lg">You have not placed any orders yet.</p>
+        <div className="bg-white border border-gray-200 rounded-3xl p-12 text-center shadow-theme-xs">
+          <p className="text-gray-500 text-lg mb-6 font-medium">You have not placed any orders yet.</p>
+          <Link to="/">
+            <Button size="sm">Start Shopping</Button>
+          </Link>
         </div>
       ) : (
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div
-              key={order._id || order.id}
-              className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden p-6"
-              id={`order-card-${order._id || order.id}`}
-            >
-              <div className="flex flex-col sm:flex-row justify-between border-b border-gray-200 pb-4 mb-4 gap-2">
-                <div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Order ID</span>
-                  <p className="text-sm font-bold text-gray-700">{order._id || order.id}</p>
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Placed On</span>
-                  <p className="text-sm font-medium text-gray-700">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Payment Method</span>
-                  <p className="text-sm font-medium text-gray-700 uppercase">{order.paymentMethod?.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <span className="text-xs font-semibold text-gray-400 uppercase">Status</span>
-                  <div>
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
-                      order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                      order.status === 'shipped' ? 'bg-blue-100 text-blue-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
+        <div className="bg-white border border-gray-200 rounded-3xl shadow-theme-xs overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableCell isHeader>Order ID</TableCell>
+                <TableCell isHeader>Date</TableCell>
+                <TableCell isHeader>Product Details</TableCell>
+                <TableCell isHeader>Total</TableCell>
+                <TableCell isHeader>Status</TableCell>
+                <TableCell isHeader align="right">Actions</TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orders.map((order) => {
+                const orderId = order._id || order.id;
+                return (
+                  <TableRow key={orderId}>
+                    {/* Order ID */}
+                    <TableCell className="font-mono text-xs font-bold text-gray-650">
+                      {orderId}
+                    </TableCell>
+
+                    {/* Date */}
+                    <TableCell className="font-medium text-gray-900">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </TableCell>
+
+                    {/* Product info inside order */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gray-50 border border-gray-150 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
+                          {order.product?.image ? (
+                            <img src={order.product.image} alt={order.product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-[10px] text-gray-400">No Image</span>
+                          )}
+                        </div>
+                        <div className="truncate max-w-[150px] sm:max-w-xs">
+                          <span className="font-semibold text-gray-850 truncate block">
+                            {order.product?.name || 'Product Deleted'}
+                          </span>
+                          <span className="text-xs text-gray-500 block mt-0.5">
+                            Qty: {order.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+
+                    {/* Total Amount */}
+                    <TableCell className="font-bold text-gray-950">
+                      ₹{(order.totalAmount || 0).toFixed(2)}
+                    </TableCell>
+
+                    {/* Status Badge */}
+                    <TableCell>
+                      <Badge color={getStatusColor(order.status)} variant="light">
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+
+                    {/* View details action button */}
+                    <TableCell align="right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="py-1 px-3 text-xs"
+                        onClick={() => openOrderDetails(order)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      <Modal isOpen={isModalOpen} onClose={closeOrderDetails} className="max-w-lg p-6">
+        {selectedOrder && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Order Details
+              </h3>
+              <p className="text-xs font-mono text-gray-500 mt-1">
+                ID: {selectedOrder._id || selectedOrder.id}
+              </p>
+            </div>
+
+            <div className="space-y-4 border-t border-b border-gray-100 py-4">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Order Status:</span>
+                <Badge color={getStatusColor(selectedOrder.status)} variant="solid">
+                  {selectedOrder.status}
+                </Badge>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded overflow-hidden flex-shrink-0">
-                    {order.product?.image ? (
-                      <img src={order.product.image} alt={order.product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs text-gray-400">No Image</span>
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="text-gray-800 font-bold">{order.product?.name || 'Product Deleted'}</h4>
-                    <p className="text-sm text-gray-500">Qty: {order.quantity}</p>
-                  </div>
-                </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Placed On:</span>
+                <span className="font-semibold text-gray-800">
+                  {new Date(selectedOrder.createdAt).toLocaleString()}
+                </span>
+              </div>
 
-                <div className="text-right sm:text-right w-full sm:w-auto">
-                  <span className="text-xs font-semibold text-gray-400 uppercase block">Total Amount</span>
-                  <span className="text-xl font-extrabold text-gray-900">${(order.totalAmount || 0).toFixed(2)}</span>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Payment Method:</span>
+                <span className="font-semibold text-gray-850 uppercase">
+                  {selectedOrder.paymentMethod?.replace('_', ' ')}
+                </span>
+              </div>
+            </div>
+
+            {/* Product details */}
+            <div className="space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Items Ordered</span>
+              <div className="flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                <div className="w-16 h-16 bg-white border border-gray-150 rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
+                  {selectedOrder.product?.image ? (
+                    <img src={selectedOrder.product.image} alt={selectedOrder.product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-gray-400">No Image</span>
+                  )}
+                </div>
+                <div className="flex-grow">
+                  <h4 className="font-bold text-gray-850 text-sm">
+                    {selectedOrder.product?.name || 'Product Deleted'}
+                  </h4>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Qty: {selectedOrder.quantity} &times; ₹{selectedOrder.product?.price?.toFixed(2) || '0.00'}
+                  </p>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="flex justify-between items-center pt-2 font-extrabold text-lg text-gray-900">
+              <span>Total Paid</span>
+              <span>₹{(selectedOrder.totalAmount || 0).toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" size="sm" onClick={closeOrderDetails}>
+                Close
+              </Button>
+              {selectedOrder.product && (
+                <Link to={`/products/${selectedOrder.product._id || selectedOrder.product.id}`}>
+                  <Button size="sm" onClick={closeOrderDetails}>
+                    View Product
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
