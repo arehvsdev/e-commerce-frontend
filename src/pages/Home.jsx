@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useSearchParams } from 'react-router-dom';
 import { fetchProducts } from '../redux/thunks/productThunks';
 import api from '../api/axios';
 import ProductCard from '../components/ProductCard';
@@ -11,16 +12,18 @@ import Input from '../components/ui/Input';
 const Home = () => {
   const dispatch = useDispatch();
   const { products, loading, totalPages } = useSelector((state) => state.products);
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  const [search, setSearch] = useState('');
+  const querySearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(querySearch);
   const [category, setCategory] = useState('');
   const [sort, setSort] = useState('');
   const [categories, setCategories] = useState([]);
   const [page, setPage] = useState(1);
 
-  const fetchProductsList = async (pageNum = page) => {
+  const fetchProductsList = async (pageNum = page, currentSearch = search) => {
     const params = { page: pageNum, limit: 8 };
-    if (search.trim()) params.search = search;
+    if (currentSearch.trim()) params.search = currentSearch;
     if (category) params.category = category;
     if (sort) params.sort = sort;
 
@@ -46,15 +49,23 @@ const Home = () => {
     loadCategories();
   }, []);
 
+  // Fetch when category or sort changes
   useEffect(() => {
-    fetchProductsList(1);
+    fetchProductsList(1, search);
     setPage(1);
   }, [category, sort]);
 
+  // Handle URL query changes (e.g. from header search)
+  useEffect(() => {
+    const q = searchParams.get('search') || '';
+    setSearch(q);
+    fetchProductsList(1, q);
+    setPage(1);
+  }, [searchParams]);
+
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchProductsList(1);
-    setPage(1);
+    setSearchParams(search.trim() ? { search: search.trim() } : {});
   };
 
   const handlePageChange = (newPage) => {

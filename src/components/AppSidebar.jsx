@@ -3,15 +3,18 @@ import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useSidebar } from "../context/SidebarContext";
 import {
-  GridIcon,
-  BoxCubeIcon,
-  TableIcon,
-  UserCircleIcon,
-  BoxIcon,
-  PlugInIcon,
-  PlusIcon,
-  HorizontaLDots,
-} from "../icons";
+  LayoutGrid,
+  ShoppingCart,
+  ClipboardList,
+  User,
+  Users,
+  Package,
+  LogIn,
+  UserPlus,
+  MoreHorizontal,
+  FolderOpen,
+  Terminal
+} from "lucide-react";
 
 const AppSidebar = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
@@ -30,12 +33,12 @@ const AppSidebar = () => {
   if (!isAdmin) {
     mainNavItems.push(
       {
-        icon: <GridIcon />,
+        icon: <LayoutGrid className="size-5" />,
         name: "Shop Catalog",
         path: "/",
       },
       {
-        icon: <BoxCubeIcon />,
+        icon: <ShoppingCart className="size-5" />,
         name: "My Cart",
         path: "/cart",
       }
@@ -44,12 +47,12 @@ const AppSidebar = () => {
     if (token) {
       mainNavItems.push(
         {
-          icon: <TableIcon />,
+          icon: <ClipboardList className="size-5" />,
           name: "My Orders",
           path: "/orders",
         },
         {
-          icon: <UserCircleIcon />,
+          icon: <User className="size-5" />,
           name: "My Profile",
           path: "/profile",
         }
@@ -62,29 +65,34 @@ const AppSidebar = () => {
   if (isAdmin) {
     adminNavItems.push(
       {
-        icon: <GridIcon />,
+        icon: <LayoutGrid className="size-5" />,
         name: "Ecommerce Dashboard",
         path: "/admin/dashboard",
       },
       {
-        icon: <BoxIcon />,
+        icon: <Package className="size-5" />,
         name: "Manage Products",
         path: "/admin/products",
       },
       {
-        icon: <TableIcon />,
+        icon: <FolderOpen className="size-5" />,
         name: "Manage Categories",
         path: "/admin/categories",
       },
       {
-        icon: <UserCircleIcon />,
+        icon: <Users className="size-5" />,
         name: "Manage Users",
         path: "/admin/users",
       },
       {
-        icon: <TableIcon />,
+        icon: <ClipboardList className="size-5" />,
         name: "Manage Orders",
         path: "/admin/orders",
+      },
+      {
+        icon: <Terminal className="size-5" />,
+        name: "API Logs",
+        path: "/admin/logs",
       }
     );
   }
@@ -94,12 +102,12 @@ const AppSidebar = () => {
   if (!token) {
     guestNavItems.push(
       {
-        icon: <PlugInIcon />,
+        icon: <LogIn className="size-5" />,
         name: "Sign In",
         path: "/login",
       },
       {
-        icon: <PlusIcon className="w-3.5 h-3.5" />,
+        icon: <UserPlus className="size-5" />,
         name: "Sign Up",
         path: "/register",
       }
@@ -191,7 +199,7 @@ const AppSidebar = () => {
                   {isExpanded || isHovered || isMobileOpen ? (
                     "Admin Panel"
                   ) : (
-                    <HorizontaLDots className="size-6" />
+                    <MoreHorizontal className="size-5 text-gray-400" />
                   )}
                 </h2>
                 {renderMenuItems(adminNavItems)}
@@ -209,7 +217,7 @@ const AppSidebar = () => {
                   {isExpanded || isHovered || isMobileOpen ? (
                     "Account"
                   ) : (
-                    <HorizontaLDots className="size-6" />
+                    <MoreHorizontal className="size-5 text-gray-400" />
                   )}
                 </h2>
                 {renderMenuItems(guestNavItems)}

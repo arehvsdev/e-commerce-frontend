@@ -6,7 +6,7 @@ import Badge from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import Label from '../components/ui/Label';
 import Button from '../components/ui/Button';
-import { PencilIcon } from '../icons';
+import { Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminOrders = () => {
@@ -164,7 +164,7 @@ const AdminOrders = () => {
                         className="text-gray-400 hover:text-brand-500 transition-colors p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
                         title="Update Status"
                       >
-                        <PencilIcon className="size-5" />
+                        <Pencil className="size-5" />
                       </button>
                     </TableCell>
                   </TableRow>

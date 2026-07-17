@@ -21,8 +21,8 @@ const Orders = () => {
     dispatch(fetchOrdersStart());
     try {
       const response = await api.get('/orders');
-      const data = response.data.data;
-      dispatch(fetchOrdersSuccess(data || []));
+      const data = response.data.data?.orders || [];
+      dispatch(fetchOrdersSuccess(data));
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to fetch orders';
       dispatch(fetchOrdersFailure(message));

@@ -7,7 +7,7 @@ import { Modal } from '../components/ui/Modal';
 import Label from '../components/ui/Label';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { PencilIcon, TrashBinIcon, PlusIcon } from '../icons';
+import { Pencil, Trash2, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminUsers = () => {
@@ -20,7 +20,8 @@ const AdminUsers = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
 
   // Form states
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +52,8 @@ const AdminUsers = () => {
   const openAddModal = () => {
     setModalMode('add');
     setSelectedUserId(null);
-    setName('');
+    setFirstName('');
+    setLastName('');
     setEmail('');
     setPhone('');
     setPassword('');
@@ -62,7 +64,8 @@ const AdminUsers = () => {
   const openEditModal = (user) => {
     setModalMode('edit');
     setSelectedUserId(user._id || user.id);
-    setName(user.name || '');
+    setFirstName(user.firstName || '');
+    setLastName(user.lastName || '');
     setEmail(user.email || '');
     setPhone(user.phone || '');
     setPassword('');
@@ -93,17 +96,53 @@ const AdminUsers = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name || !email || !phone) {
-      return toast.error('Name, Email and Phone are required');
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim()) {
+      return toast.error('First Name, Last Name, Email and Phone are required');
+    }
+
+    if (firstName.trim().length < 2 || firstName.trim().length > 60) {
+      return toast.error('First name must be between 2 and 60 characters');
+    }
+
+    if (lastName.trim().length < 2 || lastName.trim().length > 60) {
+      return toast.error('Last name must be between 2 and 60 characters');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (email.trim().length < 5 || email.trim().length > 100 || !emailRegex.test(email.trim())) {
+      return toast.error('Please enter a valid email address (5-100 characters)');
+    }
+
+    const phoneTrim = phone.trim();
+    if (phoneTrim.length < 7 || phoneTrim.length > 20) {
+      return toast.error('Phone number must be between 7 and 20 characters');
+    }
+    if (!/^[+0-9\s()-]+$/.test(phoneTrim)) {
+      return toast.error('Phone number contains invalid characters');
     }
 
     try {
       if (modalMode === 'add') {
         if (!password) return toast.error('Password is required for new users');
-        await api.post('/user', { name, email, phone, password, role });
+        if (password.length < 8 || password.length > 100) {
+          return toast.error('Password must be between 8 and 100 characters long');
+        }
+        if (!/[A-Z]/.test(password)) {
+          return toast.error('Password must contain at least one uppercase letter');
+        }
+        if (!/[a-z]/.test(password)) {
+          return toast.error('Password must contain at least one lowercase letter');
+        }
+        if (!/\d/.test(password)) {
+          return toast.error('Password must contain at least one number');
+        }
+        if (!/[@$!%*?&#^()_\-+={[\]}|\\:;"'<,>.?/]/.test(password)) {
+          return toast.error('Password must contain at least one special character');
+        }
+        await api.post('/user', { firstName: firstName.trim(), lastName: lastName.trim(), email: email.toLowerCase().trim(), phone: phoneTrim, password, role });
         toast.success('User created successfully');
       } else {
-        await api.put(`/user/${selectedUserId}`, { name, email, phone });
+        await api.put(`/user/${selectedUserId}`, { firstName: firstName.trim(), lastName: lastName.trim(), email: email.toLowerCase().trim(), phone: phoneTrim });
         toast.success('User details updated successfully');
       }
       setShowModal(false);
@@ -130,7 +169,7 @@ const AdminUsers = () => {
         <div>
           <Button
             onClick={openAddModal}
-            startIcon={<PlusIcon className="w-4 h-4 fill-current" />}
+            startIcon={<Plus className="w-4 h-4" />}
             size="sm"
             className="w-full sm:w-auto"
           >
@@ -187,16 +226,16 @@ const AdminUsers = () => {
                         <button
                           onClick={() => openEditModal(user)}
                           className="text-gray-400 hover:text-brand-500 transition-colors p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
-                          title="Edit Details"
+                          title="Edit User"
                         >
-                          <PencilIcon className="size-5" />
+                          <Pencil className="size-5" />
                         </button>
                         <button
-                          onClick={() => openDeleteConfirm(userId, user.name)}
+                          onClick={() => openDeleteConfirm(user._id || user.id, user.name)}
                           className="text-gray-400 hover:text-error-500 transition-colors p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
                           title="Delete User"
                         >
-                          <TrashBinIcon className="size-5" />
+                          <Trash2 className="size-5" />
                         </button>
                       </div>
                     </TableCell>
@@ -229,15 +268,28 @@ const AdminUsers = () => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Full Name */}
+              {/* First Name */}
               <div>
-                <Label htmlFor="usrName">Full Name *</Label>
+                <Label htmlFor="usrFirstName">First Name *</Label>
                 <Input
-                  id="usrName"
+                  id="usrFirstName"
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. John Doe"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="e.g. John"
+                  required
+                />
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <Label htmlFor="usrLastName">Last Name *</Label>
+                <Input
+                  id="usrLastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="e.g. Doe"
                   required
                 />
               </div>
@@ -327,7 +379,7 @@ const AdminUsers = () => {
       >
         <div className="space-y-6 text-center">
           <div className="w-16 h-16 bg-error-50 rounded-full flex items-center justify-center mx-auto text-error-600 mb-4">
-            <TrashBinIcon className="size-8" />
+            <Trash2 className="size-8" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900">Delete User</h3>

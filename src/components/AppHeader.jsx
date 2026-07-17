@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useSidebar } from "../context/SidebarContext";
 import UserDropdown from "./UserDropdown";
@@ -8,12 +8,23 @@ const AppHeader = () => {
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { cartItems } = useSelector((state) => state.cart);
   const totalCartItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const navigate = useNavigate();
+  const [headerSearch, setHeaderSearch] = useState('');
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
       toggleSidebar();
     } else {
       toggleMobileSidebar();
+    }
+  };
+
+  const handleHeaderSearchSubmit = (e) => {
+    e.preventDefault();
+    if (headerSearch.trim()) {
+      navigate(`/?search=${encodeURIComponent(headerSearch.trim())}`);
+    } else {
+      navigate('/');
     }
   };
 
@@ -82,7 +93,7 @@ const AppHeader = () => {
           </Link>
 
           <div className="hidden lg:block">
-            <div className="relative">
+            <form onSubmit={handleHeaderSearchSubmit} className="relative">
               <span className="absolute -translate-y-1/2 pointer-events-none left-4 top-1/2">
                 <svg
                   className="fill-gray-500"
@@ -102,15 +113,17 @@ const AppHeader = () => {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Search or type command..."
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder="Search products..."
                 className="h-11 w-full rounded-lg border border-gray-200 bg-transparent py-2.5 pl-12 pr-14 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-none focus:ring-3 focus:ring-brand-500/10 xl:w-[430px]"
               />
 
-              <button className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500">
+              <button type="submit" className="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500">
                 <span> ⌘ </span>
                 <span> K </span>
               </button>
-            </div>
+            </form>
           </div>
         </div>
 

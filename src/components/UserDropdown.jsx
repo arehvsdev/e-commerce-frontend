@@ -5,7 +5,7 @@ import { logout } from "../redux/slices/authSlice";
 import { clearCart } from "../redux/slices/cartSlice";
 import { Dropdown } from "./ui/Dropdown";
 import { DropdownItem } from "./ui/DropdownItem";
-import { UserCircleIcon, BoxIcon, CalenderIcon, PlugInIcon } from "../icons";
+import { User, Package, Calendar, LogIn, LogOut } from "lucide-react";
 
 export default function UserDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,9 +32,9 @@ export default function UserDropdown() {
     return (
       <Link
         to="/login"
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition"
+        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition whitespace-nowrap"
       >
-        <PlugInIcon className="size-4 fill-current" />
+        <LogIn className="size-4" />
         <span>Sign In</span>
       </Link>
     );
@@ -97,7 +97,7 @@ export default function UserDropdown() {
               to="/profile"
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-900"
             >
-              <UserCircleIcon className="size-5 text-gray-500" />
+              <User className="size-5 text-gray-500" />
               My Profile
             </DropdownItem>
           </li>
@@ -108,7 +108,7 @@ export default function UserDropdown() {
               to="/orders"
               className="flex items-center gap-3 px-3 py-2 font-medium text-gray-700 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-gray-900"
             >
-              <CalenderIcon className="size-5 text-gray-500" />
+              <Calendar className="size-5 text-gray-500" />
               Order History
             </DropdownItem>
           </li>
@@ -121,7 +121,7 @@ export default function UserDropdown() {
                 to="/admin/products"
                 className="flex items-center gap-3 px-3 py-2 font-medium text-brand-650 rounded-lg group text-theme-sm hover:bg-gray-100 hover:text-brand-700"
               >
-                <BoxIcon className="size-5 text-brand-500" />
+                <Package className="size-5 text-brand-500" />
                 Manage Products
               </DropdownItem>
             </li>
@@ -134,20 +134,7 @@ export default function UserDropdown() {
             tag="button"
             className="flex items-center gap-3 w-full px-3 py-2 font-bold text-error-600 rounded-lg group text-theme-sm hover:bg-error-50 hover:text-error-700 transition"
           >
-            <svg
-              className="size-5 text-error-500 group-hover:text-error-700"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
+            <LogOut className="size-5 text-error-500 group-hover:text-error-700" />
             Logout
           </DropdownItem>
         </div>

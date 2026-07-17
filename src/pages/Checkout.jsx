@@ -23,6 +23,10 @@ const Checkout = () => {
       return toast.error('Shipping address is required');
     }
 
+    if (shippingAddress.trim().length < 10 || shippingAddress.trim().length > 300) {
+      return toast.error('Shipping address must be between 10 and 300 characters');
+    }
+
     setSubmitting(true);
     try {
       const orderPromises = cartItems.map((item) => {

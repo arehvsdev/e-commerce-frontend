@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { updateQuantity, removeFromCart } from '../redux/slices/cartSlice';
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '../components/ui/Table';
 import Button from '../components/ui/Button';
-import { TrashBinIcon } from '../icons';
+import { Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Cart = () => {
@@ -134,7 +134,7 @@ const Cart = () => {
                             className="text-gray-400 hover:text-error-500 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
                             title="Remove item"
                           >
-                            <TrashBinIcon className="size-5" />
+                            <Trash2 className="size-5" />
                           </button>
                         </TableCell>
                       </TableRow>

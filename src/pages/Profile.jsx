@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { updateUserSuccess, logout } from '../redux/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { updateUserSuccess } from '../redux/slices/authSlice';
 import api from '../api/axios';
 import Loader from '../components/Loader';
 import toast from 'react-hot-toast';
@@ -8,27 +9,31 @@ import { Modal } from '../components/ui/Modal';
 import Label from '../components/ui/Label';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 
 const Profile = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { token, user } = useSelector((state) => state.auth);
 
-  // Profile data states
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
+
+  // Profile details states
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('');
-  
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Address states (loaded from API)
+  // Address details states
+  const [address, setAddress] = useState(null);
+  const [countriesList, setCountriesList] = useState([]);
   const [country, setCountry] = useState('');
   const [cityState, setCityState] = useState('');
   const [postalCode, setPostalCode] = useState('');
-  const [taxId, setTaxId] = useState('');
   const [showAddressModal, setShowAddressModal] = useState(false);
 
   // Password change states
@@ -42,6 +47,13 @@ const Profile = () => {
   const fetchProfile = async () => {
     setLoading(true);
     try {
+      try {
+        const countriesRes = await api.get('/countries');
+        setCountriesList(countriesRes.data.data || []);
+      } catch (err) {
+        console.warn('Failed to load countries list', err);
+      }
+
       const response = await api.get('/user/profile');
       const data = response.data.data;
       const userProfile = data.user || data;
@@ -52,12 +64,28 @@ const Profile = () => {
       setEmail(userProfile.email || '');
       setPhone(userProfile.phone || '');
       setRole(userProfile.role || '');
-      setCountry(userProfile.country || '');
-      setCityState(userProfile.cityState || '');
-      setPostalCode(userProfile.postalCode || '');
-      setTaxId(userProfile.taxId || '');
       
       dispatch(updateUserSuccess(userProfile));
+
+      // Fetch user address separately
+      try {
+        const addressRes = await api.get('/user/profile/address');
+        const addressData = addressRes.data.data?.address;
+        if (addressData) {
+          setAddress(addressData);
+          setCountry(addressData.country?._id || addressData.country?.id || addressData.country || '');
+          setCityState(addressData.cityState || '');
+          setPostalCode(addressData.postalCode || '');
+        } else {
+          setAddress(null);
+          setCountry('');
+          setCityState('');
+          setPostalCode('');
+        }
+      } catch (addrErr) {
+        console.warn('Failed to load address details', addrErr);
+      }
+
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to load profile');
     } finally {
@@ -71,17 +99,29 @@ const Profile = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (!firstName || !lastName || !phone) {
+    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
       return toast.error('First Name, Last Name and Phone are required');
     }
 
-    if (phone.trim().length < 7 || phone.trim().length > 20) {
+    if (firstName.trim().length < 2 || firstName.trim().length > 60) {
+      return toast.error('First name must be between 2 and 60 characters');
+    }
+
+    if (lastName.trim().length < 2 || lastName.trim().length > 60) {
+      return toast.error('Last name must be between 2 and 60 characters');
+    }
+
+    const phoneTrim = phone.trim();
+    if (phoneTrim.length < 7 || phoneTrim.length > 20) {
       return toast.error('Phone number must be between 7 and 20 characters');
+    }
+    if (!/^[+0-9\s()-]+$/.test(phoneTrim)) {
+      return toast.error('Phone number contains invalid characters');
     }
 
     setUpdating(true);
     try {
-      const response = await api.put('/user/profile', { firstName, lastName, phone });
+      const response = await api.patch('/user/profile', { firstName: firstName.trim(), lastName: lastName.trim(), phone: phoneTrim });
       const data = response.data.data;
       const updatedUser = data.user || data;
 
@@ -98,18 +138,46 @@ const Profile = () => {
 
   const handleAddressUpdate = async (e) => {
     e.preventDefault();
+    
+    const countryStr = (country || '').toString().trim();
+    const cityStateStr = (cityState || '').toString().trim();
+    const postalCodeStr = (postalCode || '').toString().trim();
+
+    if (!countryStr || !cityStateStr || !postalCodeStr) {
+      return toast.error('Country, City/State, and Postal Code are required');
+    }
+
+    if (cityStateStr.length < 2 || cityStateStr.length > 100) {
+      return toast.error('City/State must be between 2 and 100 characters');
+    }
+
+    if (!/^\d{6}$/.test(postalCodeStr)) {
+      return toast.error('Postal code must be exactly 6 digits');
+    }
+
     setUpdating(true);
     try {
-      const response = await api.put('/user/profile', { country, cityState, postalCode, taxId });
-      const data = response.data.data;
-      const updatedUser = data.user || data;
-
-      dispatch(updateUserSuccess(updatedUser));
-      toast.success('Address details updated!');
+      if (!address) {
+        // Create new address
+        await api.post('/user/profile/address', {
+          country: countryStr,
+          cityState: cityStateStr,
+          postalCode: postalCodeStr,
+        });
+        toast.success('Address details created successfully!');
+      } else {
+        // Update existing address
+        await api.put('/user/profile/address', {
+          country: countryStr,
+          cityState: cityStateStr,
+          postalCode: postalCodeStr,
+        });
+        toast.success('Address details updated successfully!');
+      }
       setShowAddressModal(false);
       fetchProfile();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update address');
+      toast.error(error.response?.data?.message || 'Failed to save address');
     } finally {
       setUpdating(false);
     }
@@ -121,23 +189,29 @@ const Profile = () => {
       return toast.error('Both password fields are required');
     }
 
-    if (newPassword.length < 8) {
-      return toast.error('New password must be at least 8 characters long');
+    if (newPassword.length < 8 || newPassword.length > 100) {
+      return toast.error('New password must be between 8 and 100 characters long');
     }
-    if (!/[A-Za-z]/.test(newPassword)) {
-      return toast.error('New password must contain at least one letter');
+    if (!/[A-Z]/.test(newPassword)) {
+      return toast.error('New password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      return toast.error('New password must contain at least one lowercase letter');
     }
     if (!/\d/.test(newPassword)) {
       return toast.error('New password must contain at least one number');
+    }
+    if (!/[@$!%*?&#^()_\-+={[\]}|\\:;"'<,>.?/]/.test(newPassword)) {
+      return toast.error('New password must contain at least one special character');
     }
 
     setUpdating(true);
     try {
       await api.patch('/user/profile/password', { oldPassword: currentPassword, newPassword });
       toast.success('Password updated successfully!');
+      setShowPasswordModal(false);
       setCurrentPassword('');
       setNewPassword('');
-      setShowPasswordModal(false);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update password');
     } finally {
@@ -145,58 +219,52 @@ const Profile = () => {
     }
   };
 
-  const handle2faToggle = () => {
-    const nextVal = !twoFactorEnabled;
-    setTwoFactorEnabled(nextVal);
-    localStorage.setItem('profile_2fa', JSON.stringify(nextVal));
-    toast.success(nextVal ? 'Two-factor authentication enabled!' : 'Two-factor authentication disabled.');
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   const handleDeleteAccount = async () => {
-    if (!window.confirm('WARNING: Are you sure you want to permanently delete your account? This action cannot be undone.')) {
-      return;
-    }
-    try {
-      await api.delete('/user/profile');
-      toast.success('Account deleted successfully.');
-      dispatch(logout());
-      window.location.href = '/register';
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete account');
+    if (window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) {
+      try {
+        await api.delete('/user/profile');
+        toast.success('Account deleted successfully.');
+        handleLogout();
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to delete account');
+      }
     }
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    window.location.href = '/login';
+  const toggle2FA = () => {
+    const newValue = !twoFactorEnabled;
+    setTwoFactorEnabled(newValue);
+    localStorage.setItem('profile_2fa', JSON.stringify(newValue));
+    toast.success(`Two-factor authentication ${newValue ? 'enabled' : 'disabled'}`);
   };
 
   if (loading) return <Loader />;
 
   return (
     <div className="space-y-6" id="profile-page">
-      {/* Breadcrumbs and Page Header */}
-      <div className="flex justify-between items-center pb-5 border-b border-gray-200">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-5 border-b border-gray-200">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-            User Profile
+            My Profile
           </h1>
-        </div>
-        <div className="text-xs text-gray-500 flex items-center gap-1.5 font-medium">
-          <span>Home</span>
-          <svg className="w-3 h-3 text-gray-400 fill-current" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-          </svg>
-          <span className="text-gray-700 font-semibold">User Profile</span>
+          <p className="mt-1 text-sm text-gray-500">
+            Manage your personal profile details.
+          </p>
         </div>
       </div>
 
-      <div className="space-y-6 max-w-5xl mx-auto">
-        
-        {/* Card 1: My Profile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Card 1: Personal Details */}
         <div className="bg-white border border-gray-200 rounded-3xl p-6 shadow-theme-xs space-y-6">
           <div className="flex justify-between items-center pb-4 border-b border-gray-100">
-            <h3 className="text-lg font-bold text-gray-900">My Profile</h3>
+            <h3 className="text-lg font-bold text-gray-900">Personal Details</h3>
             <button
               onClick={() => setShowProfileModal(true)}
               className="flex items-center gap-1.5 px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors"
@@ -208,24 +276,7 @@ const Profile = () => {
             </button>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-5 items-center">
-            {/* Silhouette default avatar */}
-            <div className="w-20 h-20 overflow-hidden border-2 border-gray-100 rounded-full bg-gray-50 flex items-center justify-center shadow-sm flex-shrink-0">
-              <svg className="size-12 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-              </svg>
-            </div>
-            
-            <div className="text-center sm:text-left">
-              <h4 className="text-xl font-bold text-gray-900">{name}</h4>
-              <p className="text-sm text-gray-500 mt-1 capitalize font-medium">
-                {role || 'Customer'} <span className="text-gray-300 mx-1.5">|</span> {cityState}
-              </p>
-            </div>
-          </div>
-
-          {/* Profile Details Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-y-5 gap-x-8 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8 pt-2">
             <div>
               <p className="text-xs text-gray-400 font-medium mb-1">First Name</p>
               <p className="text-sm font-semibold text-gray-800">{firstName || 'N/A'}</p>
@@ -236,8 +287,8 @@ const Profile = () => {
               <p className="text-sm font-semibold text-gray-800">{lastName || 'N/A'}</p>
             </div>
 
-            <div className="md:col-span-2">
-              <p className="text-xs text-gray-400 font-medium mb-1">Email address</p>
+            <div>
+              <p className="text-xs text-gray-400 font-medium mb-1">Email Address</p>
               <p className="text-sm font-semibold text-gray-800 break-all">{email}</p>
             </div>
 
@@ -247,11 +298,9 @@ const Profile = () => {
             </div>
 
             <div>
-              <p className="text-xs text-gray-400 font-medium mb-1">Bio</p>
+              <p className="text-xs text-gray-400 font-medium mb-1">Role</p>
               <p className="text-sm font-semibold text-gray-800 capitalize">{role || 'Customer'}</p>
             </div>
-
-
           </div>
         </div>
 
@@ -266,31 +315,33 @@ const Profile = () => {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              Edit
+              {address ? 'Edit' : 'Add Address'}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8 pt-2">
-            <div>
-              <p className="text-xs text-gray-400 font-medium mb-1">Country</p>
-              <p className="text-sm font-semibold text-gray-800">{country}</p>
+          {!address ? (
+            <div className="py-6 text-center">
+              <p className="text-sm text-gray-500 font-medium mb-4">No address details added yet.</p>
+              <Button size="sm" onClick={() => setShowAddressModal(true)}>Add Address</Button>
             </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-8 pt-2">
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-1">Country</p>
+                <p className="text-sm font-semibold text-gray-800">{address.country?.name || 'N/A'}</p>
+              </div>
 
-            <div>
-              <p className="text-xs text-gray-400 font-medium mb-1">City/State</p>
-              <p className="text-sm font-semibold text-gray-800">{cityState}</p>
-            </div>
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-1">City/State</p>
+                <p className="text-sm font-semibold text-gray-800">{address.cityState || 'N/A'}</p>
+              </div>
 
-            <div>
-              <p className="text-xs text-gray-400 font-medium mb-1">Postal Code</p>
-              <p className="text-sm font-semibold text-gray-800">{postalCode}</p>
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-1">Postal Code</p>
+                <p className="text-sm font-semibold text-gray-800">{address.postalCode || 'N/A'}</p>
+              </div>
             </div>
-
-            <div>
-              <p className="text-xs text-gray-400 font-medium mb-1">TAX ID</p>
-              <p className="text-sm font-semibold text-gray-800">{taxId}</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Card 3: Security */}
@@ -304,7 +355,7 @@ const Profile = () => {
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pt-2">
               <div>
                 <h4 className="text-sm font-bold text-gray-900">Change Password</h4>
-                <p className="text-xs text-gray-500 mt-1">Receive real-time notifications and team alerts.</p>
+                <p className="text-xs text-gray-500 mt-1">Update your login password details.</p>
               </div>
               <div>
                 <button
@@ -328,8 +379,8 @@ const Profile = () => {
             {/* Logout all devices */}
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pt-2">
               <div>
-                <h4 className="text-sm font-bold text-gray-900">Logout all devices</h4>
-                <p className="text-xs text-gray-500 mt-1">Sign out from every active session.</p>
+                <h4 className="text-sm font-bold text-gray-900">Logout</h4>
+                <p className="text-xs text-gray-500 mt-1">Sign out from your active session.</p>
               </div>
               <div>
                 <button
@@ -347,8 +398,8 @@ const Profile = () => {
             {/* Delete Account */}
             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pt-6">
               <div>
-                <h4 className="text-sm font-bold text-gray-900">Delete account</h4>
-                <p className="text-xs text-gray-500 mt-1">Sign out from every active session.</p>
+                <h4 className="text-sm font-bold text-gray-905 text-error-600">Delete account</h4>
+                <p className="text-xs text-gray-500 mt-1">Permanently delete your profile and account details.</p>
               </div>
               <div>
                 <button
@@ -364,7 +415,6 @@ const Profile = () => {
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Modal 1: Edit Profile details */}
@@ -464,7 +514,7 @@ const Profile = () => {
         <div className="space-y-6">
           <div>
             <h3 className="text-xl font-bold text-gray-900">
-              Edit Address Details
+              {address ? 'Edit Address Details' : 'Add Address Details'}
             </h3>
             <p className="text-xs text-gray-500 mt-1">
               Update your billing/shipping address.
@@ -474,19 +524,25 @@ const Profile = () => {
           <form onSubmit={handleAddressUpdate} className="space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <Label htmlFor="addrCountry">Country</Label>
-                <Input
+                <Label htmlFor="addrCountry">Country *</Label>
+                <select
                   id="addrCountry"
-                  type="text"
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
-                  placeholder="e.g. United States"
+                  className="h-11 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-800 focus:border-brand-300 focus:outline-none shadow-theme-xs cursor-pointer"
                   required
-                />
+                >
+                  <option value="">-- Select Country --</option>
+                  {countriesList.map((c) => (
+                    <option key={c._id || c.id} value={c._id || c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <Label htmlFor="addrCity">City/State</Label>
+                <Label htmlFor="addrCity">City/State *</Label>
                 <Input
                   id="addrCity"
                   type="text"
@@ -498,25 +554,13 @@ const Profile = () => {
               </div>
 
               <div>
-                <Label htmlFor="addrPostal">Postal Code</Label>
+                <Label htmlFor="addrPostal">Postal Code *</Label>
                 <Input
                   id="addrPostal"
                   type="text"
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
-                  placeholder="e.g. ERT 2489"
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="addrTax">TAX ID</Label>
-                <Input
-                  id="addrTax"
-                  type="text"
-                  value={taxId}
-                  onChange={(e) => setTaxId(e.target.value)}
-                  placeholder="e.g. AS4568384"
+                  placeholder="e.g. 560001"
                   required
                 />
               </div>
@@ -545,12 +589,12 @@ const Profile = () => {
       <Modal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
-        className="max-w-md p-6"
+        className="max-w-xl p-6"
       >
         <div className="space-y-6">
           <div>
             <h3 className="text-xl font-bold text-gray-900">
-              Change Account Password
+              Change Password
             </h3>
             <p className="text-xs text-gray-500 mt-1">
               Enter details to update your login password.
@@ -558,28 +602,30 @@ const Profile = () => {
           </div>
 
           <form onSubmit={handlePasswordUpdate} className="space-y-5">
-            <div>
-              <Label htmlFor="currPass">Current Password *</Label>
-              <Input
-                id="currPass"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <Label htmlFor="currPass">Current Password *</Label>
+                <Input
+                  id="currPass"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
 
-            <div>
-              <Label htmlFor="newPass">New Password *</Label>
-              <Input
-                id="newPass"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-              />
+              <div>
+                <Label htmlFor="newPass">New Password *</Label>
+                <Input
+                  id="newPass"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -592,15 +638,15 @@ const Profile = () => {
               </Button>
               <Button
                 type="submit"
+                disabled={updating}
                 size="sm"
               >
-                Update Password
+                {updating ? 'Saving...' : 'Update Password'}
               </Button>
             </div>
           </form>
         </div>
       </Modal>
-
     </div>
   );
 };

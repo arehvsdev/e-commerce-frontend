@@ -7,7 +7,7 @@ import { Modal } from '../components/ui/Modal';
 import Label from '../components/ui/Label';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { TrashBinIcon, PlusIcon, PencilIcon } from '../icons';
+import { Trash2, Plus, Pencil } from 'lucide-react';
 
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
@@ -76,6 +76,10 @@ const AdminCategories = () => {
       return toast.error('Category name is required');
     }
 
+    if (name.trim().length < 2 || name.trim().length > 60) {
+      return toast.error('Category name must be between 2 and 60 characters');
+    }
+
     try {
       if (editCategoryId) {
         await api.put(`/categories/${editCategoryId}`, { name: name.trim() });
@@ -109,7 +113,7 @@ const AdminCategories = () => {
         <div>
           <Button
             onClick={openAddForm}
-            startIcon={<PlusIcon className="w-4 h-4 fill-current" />}
+            startIcon={<Plus className="w-4 h-4" />}
             size="sm"
             className="w-full sm:w-auto"
           >
@@ -154,14 +158,14 @@ const AdminCategories = () => {
                           className="text-gray-400 hover:text-brand-500 transition-colors p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
                           title="Edit Category"
                         >
-                          <PencilIcon className="size-5" />
+                          <Pencil className="size-5" />
                         </button>
                         <button
                           onClick={() => openDeleteConfirm(categoryId, category.name)}
                           className="text-gray-400 hover:text-error-500 transition-colors p-1.5 rounded-lg hover:bg-gray-50 focus:outline-none"
                           title="Delete Category"
                         >
-                          <TrashBinIcon className="size-5" />
+                          <Trash2 className="size-5" />
                         </button>
                       </div>
                     </TableCell>
@@ -229,7 +233,7 @@ const AdminCategories = () => {
       >
         <div className="space-y-6 text-center">
           <div className="w-16 h-16 bg-error-50 rounded-full flex items-center justify-center mx-auto text-error-600 mb-4">
-            <TrashBinIcon className="size-8" />
+            <Trash2 className="size-8" />
           </div>
           <div>
             <h3 className="text-xl font-bold text-gray-900">Delete Category</h3>

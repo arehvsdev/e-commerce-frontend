@@ -7,6 +7,7 @@ import DashboardLayout from './components/DashboardLayout';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import ProductDetail from './pages/ProductDetail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
@@ -17,6 +18,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminOrders from './pages/AdminOrders';
 import AdminCategories from './pages/AdminCategories';
+import AdminLogs from './pages/AdminLogs';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -28,6 +30,7 @@ function App() {
         {/* Guest / Auth Pages (they wrap themselves in AuthLayout) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         
         {/* Main Store Pages (wrapped in Dashboard Layout) */}
         <Route element={<DashboardLayout />}>
@@ -98,6 +101,14 @@ function App() {
             element={
               <ProtectedRoute adminOnly={true}>
                 <AdminCategories />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/logs"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <AdminLogs />
               </ProtectedRoute>
             }
           />

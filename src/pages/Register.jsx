@@ -26,30 +26,48 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!firstName || !lastName || !email || !password || !phone) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !phone.trim()) {
       return toast.error('All fields are required');
+    }
+
+    if (firstName.trim().length < 2 || firstName.trim().length > 60) {
+      return toast.error('First name must be between 2 and 60 characters');
+    }
+
+    if (lastName.trim().length < 2 || lastName.trim().length > 60) {
+      return toast.error('Last name must be between 2 and 60 characters');
     }
     
     // Email basic validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return toast.error('Please enter a valid email address');
+    if (email.trim().length < 5 || email.trim().length > 100 || !emailRegex.test(email.trim())) {
+      return toast.error('Please enter a valid email address (5-100 characters)');
     }
 
-    // Phone length validation (matches backend: between 7 and 20)
-    if (phone.trim().length < 7 || phone.trim().length > 20) {
+    // Phone validation
+    const phoneTrim = phone.trim();
+    if (phoneTrim.length < 7 || phoneTrim.length > 20) {
       return toast.error('Phone number must be between 7 and 20 characters');
     }
-
-    // Password validations (matches backend requirements)
-    if (password.length < 8) {
-      return toast.error('Password must be at least 8 characters long');
+    if (!/^[+0-9\s()-]+$/.test(phoneTrim)) {
+      return toast.error('Phone number contains invalid characters');
     }
-    if (!/[A-Za-z]/.test(password)) {
-      return toast.error('Password must contain at least one letter');
+
+    // Password validations
+    if (password.length < 8 || password.length > 100) {
+      return toast.error('Password must be between 8 and 100 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+      return toast.error('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      return toast.error('Password must contain at least one lowercase letter');
     }
     if (!/\d/.test(password)) {
       return toast.error('Password must contain at least one number');
+    }
+    if (!/[@$!%*?&#^()_\-+={[\]}|\\:;"'<,>.?/]/.test(password)) {
+      return toast.error('Password must contain at least one special character');
     }
 
     if (password !== confirmPassword) {
